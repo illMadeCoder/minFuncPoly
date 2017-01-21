@@ -1,9 +1,13 @@
-a = 1;
-b = 2;
-c = 3;
-d = 4;
-e = d;
-x = a;
-t = 1 + 1;
-l = t;
-e = t + 1;
+func cat :: ->
+  32;
+func dog :: ->
+  cat();
+k = dog();
+print k;
+k = 1;
+print k;
+func foo :: a -> b ->
+  b;
+z = foo(10,2);
+x = foo(2,10);
+dump;

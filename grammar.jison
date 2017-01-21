@@ -1,7 +1,7 @@
 /*
   By : Jesse Bergerstock
   Date : 02/19/2016
-  Description : A minimal functional language.
+  Description : A minimal functional language grammar.
 */
 
 %lex
@@ -10,8 +10,15 @@
 \s+                   /**/
 (\n|";")+             return 'NEWLINE'
 "print"               return 'PRINT'
+"dump"                return 'DUMP'
+"func"                return 'FUNCTION_DEFINE'
+"("                   return 'LEFT_PAR'
+")"                   return 'RIGHT_PAR'
+","                   return 'COMMA'
+"::"                  return 'SIGNATURE'
+"->"                  return 'NEXT_PARAMETER'
 [0-9]+                return 'NUMBER'
-[a-z]                 return 'IDENTIFIER'
+[a-zA-Z]+                return 'IDENTIFIER'
 "+"|"-"|"*"|"/"|"%"   return 'BI_OP'
 "="                   return 'ASSIGNMENT'
 <<EOF>>               return 'EOF'
@@ -19,73 +26,80 @@
 
 /lex
 /* precedence */
-%start file
+%right NEXT_PARAMETER
+%left IDENTIFIER
+
+%start program
 %%
 
 /* Grammar */
 
-file
+program
   : statements EOF
-    {return {type : "file", value : $1};}
+    {return {type : "program", statements : $1};}
   ;
 statements
   : statement statements
     {$$ = [$1].concat($2)}
-  |
+  | statement
+    {$$ = [$1]}
   ;
 statement
   : assignment NEWLINE
-    {$$ = {type : "statement", value : $1};}
+  | function_define NEWLINE
+  | print NEWLINE
+  | dump NEWLINE
+  ;
+print
+  : PRINT expression
+    {$$ = {type : "print", expression : $2, string : ""}}
+  | PRINT STRING expression
+    {$$ = {type : "print", expression : $3, string : $2}}
+  ;
+dump
+  : DUMP
+    {$$ = {type : "dump"}}
   ;
 assignment
   : IDENTIFIER ASSIGNMENT expression
-    {$$ = {type : "assignment", value : {symbol : $1, expression : $3}};}
+    {$$ = {type : "assignment", symbol : $1, expression : $3}}
   ;
 expression
   : IDENTIFIER
-    {$$ = {type : "identifier", value : $1}}
+    {$$ = {type : "identifier", symbol : $1}}
   | NUMBER
     {$$ = {type : "number", value : parseInt($1)}}
-  | NUMBER BI_OP NUMBER
-    {$$ = {type : "number", value : parseInt($1)+parseInt($3)}}
+  | IDENTIFIER arguments
+    {$$ = {type : "function_call", symbol : $1, arguments : $2}}
   ;
-/*
-expr
-  : assignment newline expr
-    {yy.syntax_tree.push({type : "expr", arg : [$1]});}
-  | print newline expr
-    {yy.syntax_tree.push({type : "expr", arg : [$1]});}
-  |
+arguments
+  : LEFT_PAR RIGHT_PAR
+    {$$ = []}
+  | LEFT_PAR expression RIGHT_PAR
+    {$$ = [$2]}
+  | LEFT_PAR expression argument
+    {$$ = [$2].concat($3)}
   ;
-newline
-  : NEWLINE newline
-  | NEWLINE
+argument
+  : COMMA expression argument
+    {$$ = [$2].concat($3)}
+  | COMMA expression RIGHT_PAR
+    {$$ = [$2]}
   ;
-print
-  : PRINT variable
-    {$$ = {type : "print", arg : [$2]};}
+function_define
+  : FUNCTION_DEFINE IDENTIFIER SIGNATURE parameters expression
+    {$$ = {type : "function_define", symbol : $2, parameters : $4, expression : $5}}
   ;
-
-assignment
-  : id ASSIGNMENT number
-    {$$ = {type : "assignment", arg : [$1,$3]};}
+parameters
+  : IDENTIFIER NEXT_PARAMETER parameter
+    {$$ = [$1].concat($3)}
+  | NEXT_PARAMETER
+    {$$ = []}
   ;
-
-variable
-  : id
-    {$$ = $1;}
-  | number
-    {$$ = $1;}
+parameter
+  : IDENTIFIER NEXT_PARAMETER parameter
+    {$$ = [$1].concat($3)}
+  | IDENTIFIER NEXT_PARAMETER
+    {$$ = [$1]}
   ;
-
-id
-  : IDENTIFIER
-    {$$ = {type : "id", arg : [$1]};}
-  ;
-
-number
-  : NUMBER
-    {$$ = {type : "number", arg : [$1]};}
-  ;
-*/
 %%
