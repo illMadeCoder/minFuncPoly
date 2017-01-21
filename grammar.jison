@@ -12,6 +12,7 @@
 "print"               return 'PRINT'
 [0-9]+                return 'NUMBER'
 [a-z]                 return 'IDENTIFIER'
+"+"|"-"|"*"|"/"|"%"   return 'BI_OP'
 "="                   return 'ASSIGNMENT'
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
@@ -24,10 +25,31 @@
 /* Grammar */
 
 file
-  : expr EOF
-  {return $1;}
+  : statements EOF
+    {return {type : "file", value : $1};}
   ;
-
+statements
+  : statement statements
+    {$$ = [$1].concat($2)}
+  |
+  ;
+statement
+  : assignment NEWLINE
+    {$$ = {type : "statement", value : $1};}
+  ;
+assignment
+  : IDENTIFIER ASSIGNMENT expression
+    {$$ = {type : "assignment", value : {symbol : $1, expression : $3}};}
+  ;
+expression
+  : IDENTIFIER
+    {$$ = {type : "identifier", value : $1}}
+  | NUMBER
+    {$$ = {type : "number", value : parseInt($1)}}
+  | NUMBER BI_OP NUMBER
+    {$$ = {type : "number", value : parseInt($1)+parseInt($3)}}
+  ;
+/*
 expr
   : assignment newline expr
     {yy.syntax_tree.push({type : "expr", arg : [$1]});}
@@ -65,4 +87,5 @@ number
   : NUMBER
     {$$ = {type : "number", arg : [$1]};}
   ;
+*/
 %%
