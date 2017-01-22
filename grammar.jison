@@ -7,7 +7,7 @@
 %lex
 %%
 
-\s+                   /**/
+" "+                   /**/
 (\n|";")+             return 'NEWLINE'
 "print"               return 'PRINT'
 "dump"                return 'DUMP'
@@ -17,18 +17,16 @@
 ","                   return 'COMMA'
 "::"                  return 'SIGNATURE'
 "->"                  return 'NEXT_PARAMETER'
+"+"|"-"|"*"|"/"|"%"   return 'BINARY_OP'
 [0-9]+                return 'NUMBER'
-[a-zA-Z]+                return 'IDENTIFIER'
-"+"|"-"|"*"|"/"|"%"   return 'BI_OP'
+[a-zA-Z]+             return 'IDENTIFIER'
 "="                   return 'ASSIGNMENT'
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
 
 /lex
 /* precedence */
-%right NEXT_PARAMETER
-%left IDENTIFIER
-
+%left BINARY_OP
 %start program
 %%
 
@@ -66,9 +64,11 @@ assignment
   ;
 expression
   : IDENTIFIER
-    {$$ = {type : "identifier", symbol : $1}}
+    {$$ = {type : "identifier", symbol : $1, line : @1}}
   | NUMBER
     {$$ = {type : "number", value : parseInt($1)}}
+  | expression BINARY_OP expression
+    {$$ = {type : "binary_operation", lhs : $1, op : $2, rhs : $3}}
   | IDENTIFIER arguments
     {$$ = {type : "function_call", symbol : $1, arguments : $2}}
   ;
@@ -87,19 +87,19 @@ argument
     {$$ = [$2]}
   ;
 function_define
-  : FUNCTION_DEFINE IDENTIFIER SIGNATURE parameters expression
-    {$$ = {type : "function_define", symbol : $2, parameters : $4, expression : $5}}
+  : FUNCTION_DEFINE IDENTIFIER SIGNATURE parameters NEWLINE expression
+    {$$ = {type : "function_define", symbol : $2, parameters : $4, expression : $6}}
   ;
 parameters
-  : IDENTIFIER NEXT_PARAMETER parameter
-    {$$ = [$1].concat($3)}
-  | NEXT_PARAMETER
+  /*No parameters*/
+  : NEXT_PARAMETER
     {$$ = []}
+  | IDENTIFIER NEXT_PARAMETER parameter
+    {$$ = [$1].concat($3)}
   ;
 parameter
   : IDENTIFIER NEXT_PARAMETER parameter
     {$$ = [$1].concat($3)}
-  | IDENTIFIER NEXT_PARAMETER
-    {$$ = [$1]}
+  |
+    {$$ = []}
   ;
-%%

@@ -30,29 +30,55 @@ var program = parser.parse(input);
 //Expressions
 function evalExpression(expression,scope) {
   if (expression.type == "function_call") {
-    return callFunction(expression.symbol,expression.arguments);
-  } else if (expression.type == "number") {
+    if (symbolTable[expression.symbol] == undefined) {
+      throw new Error("Function : \"" + expression.symbol + "\" Not yet defined\n");
+    }
+    return callFunction(expression.symbol,expression.arguments,scope);
+  }
+  else if (expression.type == "number") {
     return expression.value;
-  } else if (expression.type == "identifier") {
+  }
+  else if (expression.type == "identifier") {
     if (scope[expression.symbol] == undefined) {
-      throw new Error("Symbol : \"" + expression.symbol + "\" Not yet defined");
+      throw new Error("Identifier : \"" + expression.symbol + "\" Not yet defined\n"  + "Expression : " + JSON.stringify(expression,null,4));
     }
     return scope[expression.symbol];
-  } else {
-    throw new Error("Bad evalExpression " + JSON.stringify(expression));
+  }
+  else if (expression.type == "binary_operation") {
+    let lhs = evalExpression(expression.lhs,scope);
+    let rhs = evalExpression(expression.rhs,scope);
+    let op = expression.op;
+    if (op == "+") {
+      return lhs + rhs;
+    }
+    else if (op == "-") {
+      return lhs - rhs;
+    }
+    else if (op == "*") {
+      return lhs * rhs;
+    }
+    else if (op == "/") {
+      return lhs / rhs;
+    }
+    else if (op == "%") {
+      return lhs % rhs;
+    }
+  }
+  else {
+    throw new Error("Bad evalExpression " + JSON.stringify(expression) + "\n");
   }
 }
-function callFunction(symbol,arguments) {
+function callFunction(symbol,arguments,scope) {
   let func = symbolTable[symbol];
   let signature = func.signature;
   let expression = func.expression;
   let localScope = {};
   if (signature.length != arguments.length) {
-    throw new Error("Bad argument count for function " + JSON.stringify(func));
+    throw new Error("Bad argument count for function " + JSON.stringify(func) + "\n");
   }
   //create local scope for function using params and args
   for (let i = 0; i < signature.length; i ++) {
-    localScope[signature[i]] = evalExpression(arguments[i],symbolTable);
+    localScope[signature[i]] = evalExpression(arguments[i],scope);
   }
   return evalExpression(expression,localScope);
 }

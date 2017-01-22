@@ -1,13 +1,7 @@
-func cat :: ->
-  32;
-func dog :: ->
-  cat();
-k = dog();
-print k;
-k = 1;
-print k;
+func bar :: a -> b ->
+  a * b;
+
 func foo :: a -> b ->
-  b;
-z = foo(10,2);
-x = foo(2,10);
-dump;
+  bar(a,100+b);
+
+print foo(2,2)
