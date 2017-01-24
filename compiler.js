@@ -68,26 +68,61 @@ function evalExpression(expression,scope) {
     throw new Error("Bad evalExpression " + JSON.stringify(expression) + "\n");
   }
 }
+function evalProposition(proposition,scope) {
+  let lhs = evalExpression(proposition.lhs,scope);
+  let rhs = evalExpression(proposition.rhs,scope);
+  let compare = proposition.compare;
+  if (compare == ">") {
+    return lhs > rhs;
+  }
+  else if (compare == "<") {
+    return lhs < rhs;
+  }
+  else if (compare == "<=") {
+    return lhs <= rhs;
+  }
+  else if (compare == ">=") {
+    return lhs >= rhs;
+  }
+  else if (compare == "==") {
+    return lhs == rhs;
+  }
+}
+function evalFuncBody(body,scope) {
+  if (body.type == "function_body_conditional") {
+    let guards = body.guards;
+    for (let i = 0; i < guards.length; i++) {
+      let guard = guards[i];
+      if (evalProposition(guard.proposition,scope)) {
+        return evalExpression(guard.expression,scope);
+      }
+    };
+    return 0;
+  } else if (body.type == "function_body_unconditional") {
+    return evalExpression(body.expression,scope);
+  } else {
+    throw new Error("\nBad evalFuncBody ", body)
+  }
+}
 function callFunction(symbol,arguments,scope) {
   let func = symbolTable[symbol];
-  let signature = func.signature;
-  let expression = func.expression;
+  let parameters = func.parameters;
   let localScope = {};
-  if (signature.length != arguments.length) {
+  if (parameters.length != arguments.length) {
     throw new Error("Bad argument count for function " + JSON.stringify(func) + "\n");
   }
   //create local scope for function using params and args
-  for (let i = 0; i < signature.length; i ++) {
-    localScope[signature[i]] = evalExpression(arguments[i],scope);
+  for (let i = 0; i < parameters.length; i ++) {
+    localScope[parameters[i]] = evalExpression(arguments[i],scope);
   }
-  return evalExpression(expression,localScope);
+  return evalFuncBody(func.body,localScope);;
 }
 //Assignments
-function defineFunction(symbol,parameters,expression) {
+function defineFunction(function_define) {
   let func = {};
-  func.signature = parameters;
-  func.expression = expression;
-  symbolTable[symbol] = func;
+  func.parameters = function_define.parameters;
+  func.body = function_define.function_body;
+  symbolTable[function_define.symbol] = func;
 }
 function defineAssignment(symbol,expression) {
   symbolTable[symbol] = evalExpression(expression,symbolTable);
@@ -102,7 +137,7 @@ function dump() {
 //Statements
 function evalStatement(statement) {
   if (statement.type == "function_define") {
-    defineFunction(statement.symbol,statement.parameters,statement.expression);
+    defineFunction(statement);
   } else if (statement.type == "assignment") {
     defineAssignment(statement.symbol,statement.expression);
   } else if (statement.type == "print") {

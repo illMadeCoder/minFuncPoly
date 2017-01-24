@@ -8,25 +8,29 @@
 %%
 
 " "+                   /**/
-(\n|";")+             return 'NEWLINE'
-"print"               return 'PRINT'
-"dump"                return 'DUMP'
-"func"                return 'FUNCTION_DEFINE'
-"("                   return 'LEFT_PAR'
-")"                   return 'RIGHT_PAR'
-","                   return 'COMMA'
-"::"                  return 'SIGNATURE'
-"->"                  return 'NEXT_PARAMETER'
-"+"|"-"|"*"|"/"|"%"   return 'BINARY_OP'
-[0-9]+                return 'NUMBER'
-[a-zA-Z]+             return 'IDENTIFIER'
-"="                   return 'ASSIGNMENT'
-<<EOF>>               return 'EOF'
-.                     return 'INVALID'
+(\n|";")+              return 'NEWLINE'
+"print"                return 'PRINT'
+"dump"                 return 'DUMP'
+"func"                 return 'FUNCTION_DEFINE'
+"("                    return 'LEFT_PAR'
+")"                    return 'RIGHT_PAR'
+","                    return 'COMMA'
+"::"                   return 'SIGNATURE'
+"|"                    return 'GUARD'
+"\\"                   return 'END_GUARD'
+"->"                   return 'NEXT_PARAMETER'
+"+"|"-"|"*"|"/"|"%"    return 'BINARY_OP'
+">"|"<"|">="|"<="|"==" return 'COMPARE'
+[0-9]+                 return 'NUMBER'
+[a-zA-Z]+              return 'IDENTIFIER'
+"="                    return 'EQUAL'
+<<EOF>>                return 'EOF'
+.                      return 'INVALID'
 
 /lex
 /* precedence */
 %left BINARY_OP
+%right NEWLINE
 %start program
 %%
 
@@ -59,7 +63,7 @@ dump
     {$$ = {type : "dump"}}
   ;
 assignment
-  : IDENTIFIER ASSIGNMENT expression
+  : IDENTIFIER EQUAL expression
     {$$ = {type : "assignment", symbol : $1, expression : $3}}
   ;
 expression
@@ -87,9 +91,33 @@ argument
     {$$ = [$2]}
   ;
 function_define
-  : FUNCTION_DEFINE IDENTIFIER SIGNATURE parameters NEWLINE expression
-    {$$ = {type : "function_define", symbol : $2, parameters : $4, expression : $6}}
+  : FUNCTION_DEFINE IDENTIFIER SIGNATURE parameters NEWLINE function_body
+    {$$ = {type : "function_define", symbol : $2, parameters : $4, function_body : $6}}
   ;
+function_body
+  /*No conditional*/
+  : expression
+    {$$ = {type : "function_body_unconditional", expression : $1}}
+  /*conditional*/
+  | guards
+    {$$ = {type : "function_body_conditional", guards : $1}}
+  ;
+
+guards
+  : GUARD proposition EQUAL expression NEWLINE guard
+    {$$ = [{proposition : $2, expression : $4}].concat($6)}
+  ;
+guard
+  : GUARD proposition EQUAL expression NEWLINE guard
+    {$$ = [{proposition : $2, expression : $4}].concat($6)}
+  | END_GUARD
+    {$$ = []}
+  ;
+proposition
+  : expression COMPARE expression
+    {$$ = {type : "proposition", lhs : $1, rhs : $3, compare : $2}}
+  ;
+
 parameters
   /*No parameters*/
   : NEXT_PARAMETER
