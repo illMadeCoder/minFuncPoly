@@ -21,6 +21,7 @@
 "->"                   return 'NEXT_PARAMETER'
 "+"|"-"|"*"|"/"|"%"    return 'BINARY_OP'
 ">"|"<"|">="|"<="|"==" return 'COMPARE'
+"and"|"or"              return 'LOGIC'
 [0-9]+                 return 'NUMBER'
 [a-zA-Z]+              return 'IDENTIFIER'
 "="                    return 'EQUAL'
@@ -104,18 +105,26 @@ function_body
   ;
 
 guards
-  : GUARD proposition EQUAL expression NEWLINE guard
-    {$$ = [{proposition : $2, expression : $4}].concat($6)}
+  : GUARD propositions expression NEWLINE guard
+    {$$ = [{propositions : $2, expression : $3}].concat($5)}
   ;
 guard
-  : GUARD proposition EQUAL expression NEWLINE guard
-    {$$ = [{proposition : $2, expression : $4}].concat($6)}
+  : GUARD propositions expression NEWLINE guard
+    {$$ = [{propositions : $2, expression : $3}].concat($5)}
   | END_GUARD
     {$$ = []}
   ;
+propositions
+  : expression COMPARE expression LOGIC proposition
+    {$$ = [{logic : $4, lhs : $1, rhs : $3, compare : $2}].concat($5)}
+  | expression COMPARE expression EQUAL
+    {$$ = [{logic : $4, lhs : $1, rhs : $3, compare : $2}]}
+  ;
 proposition
-  : expression COMPARE expression
-    {$$ = {type : "proposition", lhs : $1, rhs : $3, compare : $2}}
+  : expression COMPARE expression LOGIC proposition
+    {$$ = [{logic : $4, lhs : $1, rhs : $3, compare : $2}].concat($5)}
+  | expression COMPARE expression EQUAL
+    {$$ = [{logic : $4, lhs : $1, rhs : $3, compare : $2}]}
   ;
 
 parameters

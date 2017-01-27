@@ -68,6 +68,39 @@ function evalExpression(expression,scope) {
     throw new Error("Bad evalExpression " + JSON.stringify(expression) + "\n");
   }
 }
+function evalGuards(guards,scope) {
+  for (let i = 0; i < guards.length; i++) {
+    if (evalGuard(guards[i].propositions,scope)) {
+      return evalExpression(guards[i].expression,scope);
+    }
+  }
+  throw new Error("No guards eval to true", JSON.stringify(guards))
+}
+function evalGuard(propositions,scope) {
+  for (let i = 0; i < propositions.length; i++) {
+    let proposition = propositions[i];
+    let logic_gate = proposition.logic;
+    if (logic_gate == "=") {
+      if (evalProposition(proposition,scope) == false) {
+        return false;
+      }
+    }
+    else if (logic_gate == "and") {
+      if (evalProposition(proposition,scope) == false) {
+        return false;
+      }
+    }
+    else if (logic_gate == "or") {
+      if (evalProposition(proposition,scope) == true) {
+        return true;
+      }
+    }
+    else {
+      throw new Error();
+    }
+  }
+  return true;
+}
 function evalProposition(proposition,scope) {
   let lhs = evalExpression(proposition.lhs,scope);
   let rhs = evalExpression(proposition.rhs,scope);
@@ -90,14 +123,7 @@ function evalProposition(proposition,scope) {
 }
 function evalFuncBody(body,scope) {
   if (body.type == "function_body_conditional") {
-    let guards = body.guards;
-    for (let i = 0; i < guards.length; i++) {
-      let guard = guards[i];
-      if (evalProposition(guard.proposition,scope)) {
-        return evalExpression(guard.expression,scope);
-      }
-    };
-    return 0;
+    return evalGuards(body.guards,scope)
   } else if (body.type == "function_body_unconditional") {
     return evalExpression(body.expression,scope);
   } else {
